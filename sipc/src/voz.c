@@ -1,5 +1,4 @@
 
-
 #include <stdio.h>
 #include <stdlib.h>
 #include <errno.h>
@@ -21,36 +20,21 @@
 
 extern int audiofd;
 
-/*****************************************************************************
- * @name
- * @description
- * @param
- * @return
- */
+
 void usage()
 {
     fprintf(stderr, "Usage: voz user extension@pbx_ip[:port] local_ip[:port]\n");
     exit(1);
 }
 
-/*****************************************************************************
- * @name
- * @description
- * @param
- * @return
- */
+
 void die_with_error(const char *message)
 {
     perror(message);
     exit(1);
 }
 
-/*****************************************************************************
- * @name
- * @description
- * @param
- * @return
- */
+
 int open_udp_socket(char *ip, int port)
 {
     int s, i;
@@ -69,12 +53,7 @@ int open_udp_socket(char *ip, int port)
     return s;
 }
 
-/*****************************************************************************
- * @name
- * @description
- * @param
- * @return
- */
+
 int get_power(char *buf)
 {
     int a, i, p;
@@ -88,12 +67,7 @@ int get_power(char *buf)
     return p;
 }
 
-/*****************************************************************************
- * @name
- * @description
- * @param
- * @return
- */
+
 int main(int argc, char **argv)
 {
     struct timeval tv;
@@ -154,9 +128,9 @@ int main(int argc, char **argv)
     if (argc == 5)
         session->power = atoi(argv[4]);
 
-    printf("Step-1: Arguments has beeen parsed Successfully..\n\n");
+    // printf("Step-1: Arguments has beeen parsed Successfully..\n\n");
 
-    printf("Step:2 Trying to read the text..\n\n");
+    // printf("Step:2 Trying to read the text..\n\n");
 
     /* open audio device */
     audiofd = open_audio();
@@ -172,7 +146,7 @@ int main(int argc, char **argv)
     {
         n = 0;
 
-        printf("Inside While Loop...\n");
+        // printf("Inside While Loop...\n");
         printf("Session curr State is %d\t Session prev state is %d\n", session->curr_state, session->prev_state);
 
         if (session->prev_state != session->curr_state)
@@ -180,24 +154,26 @@ int main(int argc, char **argv)
             switch (session->curr_state)
             {
             case REGISTERING:
-                printf("Registering\n");
+                printf("\n\t\tRegistering\n");
                 break;
 
             case REGISTERED:
+                printf("\n\t\tRegistered\n");
                 fprintf(stdout, "\nL - Connect to another VoIP application\nT - End application\n\n");
-                printf("Registered\n");
+                
                 break;
             case ONCALL:
+                printf("\n\t\tOncall\n");
                 fprintf(stdout, "\nD - Turn off the voice call\n\n");
-                printf("Oncall\n");
+                
                 break;
             case INVITING:
+                printf("\n\t\tInviting\n");
                 fprintf(stdout, "\nD - Turn off the voice call\n\n");
-                printf("Inviting\n");
+                
 
                 break;
             case UNREGISTERED:
-                printf("UnRegistered\n");
                 fprintf(stdout, "\n Unregistered\n");
                 printf("Before close\n");
                 close(session->socket);
@@ -223,27 +199,33 @@ int main(int argc, char **argv)
         FD_SET(fileno(stdin), &mask);
         //////
 
+        // if (session->curr_state == ONCALL)
+        // {
+        //     printf("Trying to set the State inside ONCALL...\n");
+        //     FD_SET(session->call->socket, &mask);
+        //     FD_SET(audiofd, &mask);
+        // }
+
+        int retval = select(FD_SETSIZE, &mask, NULL, NULL, NULL);
+        
+        if(retval < 1){
+            die_with_error("select() failed\n");
+        }
+
         if (session->curr_state == ONCALL)
         {
             printf("Trying to set the State inside ONCALL...\n");
             FD_SET(session->call->socket, &mask);
             FD_SET(audiofd, &mask);
-        }
-
-        int retval = select(FD_SETSIZE, &mask, NULL, NULL, NULL);
-        if (retval == -1)
-            perror("select()");
-        else
-            printf("Data is available now.\n");
-
-        printf("Select() is called...\n");
-
-        if (session->curr_state == ONCALL)
-        {
-            printf("Inside ONCALL State 1..\n");
-
+            
             if (FD_ISSET(session->call->socket, &mask))
             {
+                
+                printf("Inside ONCALL State 1..\n\n");
+
+                printf("Sesson - power = %d\n", session->power);
+                printf("Buffer = %s\n", buf);
+                printf("getpower(buff) = %i\n", get_power(buf));
 
                 p = rtp_recvfrom(session->call->socket, buf, BUFSIZE);
 
@@ -253,7 +235,12 @@ int main(int argc, char **argv)
 
             if (FD_ISSET(audiofd, &mask))
             {
+                n = 0;
                 printf("Inside ONCALL state 2...\n");
+
+                printf("Sesson - power = %d\n", session->power);
+            printf("Buffer = %s\n", buf);
+            printf("getpower(buff) = %i\n", get_power(buf));
                 session->call->rtp_session.nseqnon++;
 
                 if ((n = read(audiofd, buf, BUFSIZE)) < 0)
@@ -261,9 +248,11 @@ int main(int argc, char **argv)
 
                 //     if ((n = write(audiofd, buf, BUFSIZE)) < 0)
                 //         die_with_error("write() failed");
+                printf("Buffer = %s\n", buf);
 
                 if (session->power < get_power(buf))
                 {
+
                     printf("%i\n", get_power(buf));
                     session->call->rtp_session.nseqpkt++;
                     rtp_sendto(session, buf, n, &(session->call->addr));
@@ -273,18 +262,20 @@ int main(int argc, char **argv)
             }
         }
 
-        // FD_SET(session->socket, &mask);
+        //FD_SET(session->socket, &mask);
 
         if (FD_ISSET(session->socket, &mask))
         {
 
             memset(msg, 0, MAX_SIP_LEN);
-            printf("Waiting for the response from the server:\n ");
+            // printf("Waiting for the response from the server:\n ");
 
             if ((n = recvfrom(session->socket, msg, MAX_SIP_LEN, 0, (struct sockaddr *)&from, &fromlen)) < 0)
                 die_with_error("recvfrom() failed");
-            printf("Handling SIP message function..\n");
+            // printf("Handling SIP message function..\n");
+            sleep(2);
             handle_sip_msg(session, msg);
+            sleep(2);
         }
 
         if (FD_ISSET(fileno(stdin), &mask))
@@ -292,7 +283,7 @@ int main(int argc, char **argv)
 
             printf("Mask = %d inside fd_isset \n", mask);
             printf("Enter your Choice: ");
-            __fpurge(stdin);
+            // __fpurge(stdin);
             c = getchar();
             printf("Choice = %c\n", c);
 
@@ -302,7 +293,7 @@ int main(int argc, char **argv)
 
                 if (session->curr_state == REGISTERING)
                 {
-                    printf("Inside REgistering Case...\n");
+                    printf("...Inside Registering Case...\n");
                     fprintf(stdout, "\nExtension: ");
                     fscanf(stdin, "%s", t);
                     fprintf(stdout, "IP: ");
@@ -324,7 +315,9 @@ int main(int argc, char **argv)
                     session->call->rtp_session.nseqnon = 0;
                     session->call->rtp_session.firstpkt = TRUE;
                     printf("Send sip_invite called...\n");
+                    sleep(2);
                     send_sip_invite(session);
+                    sleep(2);
                     printf("After sip_invite function..\n");
                 }
 
@@ -332,8 +325,10 @@ int main(int argc, char **argv)
             case 'D':
                 if (session->curr_state == ONCALL)
                     send_sip_bye(session);
-                else if (session->curr_state == INVITING)
+                else if (session->curr_state == INVITING){
                     printf("I'm here and I sent a cancel\n");
+                    send_sip_bye(session);
+                }
                 break;
             case 'T':
                 if (session->curr_state == REGISTERED)
