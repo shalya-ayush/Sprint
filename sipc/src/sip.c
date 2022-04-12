@@ -1,57 +1,3 @@
-/*****************************************************************************
- *                                                                           *
- *                      10101000100010001010101100101010101                  *
- *                      0101010101               0101010100                  *
- *                      0101010101               0101010100                  *
- *                      1010101010        10101  0101110101                  *
- *                      1010101010       01  10  0101011101                  *
- *                      1010111010       01      0101010101                  *
- *                       010101010  01  010 0101 010101010                   *
- *                       010101010  01  010  01  010101011                   *
- *                        01010101  01  010  01  01010101                    *
- *                        11010101  01  010  01  01010110                    *
- *                         1010101  01  010  01  0101000                     *
- *                         1110101  01  010  01  0101001                     *
- *                          110101      010      010001                      *
- *                           10101     001       01011                       *
- *                            1101  10101        0101                        *
- *                             110               011                         *
- *                              10               01                          *
- *                               01             10                           *
- *                                 00         10                             *
- *                                  01       01                              *
- *                                    01   01                                *
- *                                      010                                  *
- *                                       1                                   *
- *                                                                           *
- *                        Universidade Técnica de Lisboa                     *
- *                                                                           *
- *                          Instituto Superior Técnico                       *
- *                                                                           *
- *                                                                           *
- *                                                                           *
- *                    RIC - Redes Integradas de Comunicações                 *
- *                               VoIP Application                            *
- *                                                                           *
- *                       Professor Paulo Rogério Pereira                     *
- *                                                                           *
- *                                                                           *
- *****************************************************************************
- * @filename: sip.c                                                          *
- * @description:                                                             *
- * @language: C                                                              *
- * @compiled on: cc/gcc                                                      *
- * @last update at: 2007-11-27                                               *
- *****************************************************************************
- * @students that colaborated on this file:                                  *
- *  57442 - Daniel Silvestre - daniel.silvestre@tagus.ist.utl.pt             *
- *  57476 - Hugo Miguel Pinho Freire - hugo.freire@tagus.ist.utl.pt          *
- *****************************************************************************
- * @changelog for this file:                                                 *
- *	No changelog was kept for this file.                  				           *
- *****************************************************************************
- * @comments for this file:                                                  *
- *****************************************************************************/
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -76,7 +22,7 @@ extern int audiofd;
 
 char *mk_sip_msg(sip_session_t *session, int exp, int msgtype)
 {
-    printf("******Opening mk_sip_msg() function*******\n");
+    // printf("******Opening mk_sip_msg() function*******\n");
     char *msg, sdp[MAX_SDP_LEN];
 
     msg = (char *) malloc(MAX_SIP_LEN * sizeof(char));
@@ -211,7 +157,7 @@ char *mk_sip_msg(sip_session_t *session, int exp, int msgtype)
         break;
     }
 
-    printf("*****Closing mk_sip_msg() function******\n");
+    // printf("*****Closing mk_sip_msg() function******\n");
     return msg;
 }
 
@@ -428,7 +374,7 @@ char *gen_call_id(sip_session_t *session)
 }
 void send_sip_register(sip_session_t *session, int exp)
 {
-    printf("******Opening send_sip_register() function ******\n");
+    // printf("******Opening send_sip_register() function ******\n");
     int n;
     char *msg;
 
@@ -443,7 +389,7 @@ void send_sip_register(sip_session_t *session, int exp)
 
     free(msg);
 
-    printf("*****Closing send_sip_register() function******\n");
+    // printf("*****Closing send_sip_register() function******\n");
 
 }
 
@@ -452,7 +398,7 @@ void send_sip_register(sip_session_t *session, int exp)
 void init_sip_session(sip_session_t *session)
 {
 
-    printf("******Openining init_sip_session() function ******\n");
+    // printf("******Openining init_sip_session() function ******\n");
     session->call = NULL;
     session->seq = 1;
     session->curr_state = REGISTERING;
@@ -461,7 +407,7 @@ void init_sip_session(sip_session_t *session)
     session->socket = open_udp_socket(session->localip, session->localport);
     send_sip_register(session, DEFAULT_EXPIRATION);
 
-    printf("******Closing init_sip_session() function******\n");
+    // printf("******Closing init_sip_session() function******\n");
 
 }
 
@@ -472,7 +418,7 @@ void send_sip_invite(sip_session_t *session)
 
 
 {
-    printf("******Opening send_sip_invite funciton()******\n");
+    // printf("******Opening send_sip_invite funciton()******\n");
     int l;
     char *s;
     struct sockaddr_in addr;
@@ -494,7 +440,7 @@ void send_sip_invite(sip_session_t *session)
     
 
     l =sendto(session->socket,s,strlen(s)+1,0,(struct sockaddr *) &(session->addr), sizeof(session->addr));
-    printf("Return from sendto() = %d\n", l);
+    // printf("Return from sendto() = %d\n", l);
 
     if(l < 0)
         die_with_error("sendto() failed");
@@ -504,16 +450,11 @@ void send_sip_invite(sip_session_t *session)
     session->prev_state = REGISTERED;
     session->curr_state = INVITING;
     
-    printf("******Closing send_sip_invite()function******\n");
+    // printf("******Closing send_sip_invite()function******\n");
 
 }
 
 
-
-
-
-
-/*******************************************************************************************/
 void send_sip_bye(sip_session_t *session)
 {
     int n;
@@ -578,7 +519,7 @@ void free_sip_session(sip_session_t *session)
 void handle_sip_msg(sip_session_t *session, char *str)
 {
 
-    printf("******Opening handle_sip_msg() function******\n");
+    // printf("******Opening handle_sip_msg() function******\n");
     int l;
     char *s;
     sip_msg_t *msg;
@@ -588,6 +529,8 @@ void handle_sip_msg(sip_session_t *session, char *str)
     read_sip_msg(str);
 
     msg = read_sip_msg(str);
+    sleep(2);
+    printf("msg-type = %d \t msg-method = %s\n", msg->type, msg->method);
 
     printf("Session current state is %d\n",session->curr_state);
     switch(session->curr_state)
@@ -615,7 +558,7 @@ void handle_sip_msg(sip_session_t *session, char *str)
             session->call = msg->call;
             session->seq = msg->cseq;
 
-            //session->call->sport = ntohs(addr.sin_port);
+            session->call->sport = ntohs(addr.sin_port);
 
 
             session->call->addr.sin_family = AF_INET;
@@ -623,7 +566,7 @@ void handle_sip_msg(sip_session_t *session, char *str)
             session->call->addr.sin_port = htons(session->call->dport);
             session->call->rtp_session.nseqpkt = 0;
             session->call->rtp_session.firstpkt = TRUE;
-            session->call->sport = ntohs(session->call->addr.sin_port);
+            //session->call->sport = ntohs(session->call->addr.sin_port);
 
 
             session->call->socket = open_udp_socket(session->localip,session->call->sport);
@@ -701,7 +644,7 @@ void handle_sip_msg(sip_session_t *session, char *str)
         break;
     case INVITED:
         printf("#### Case = INVITED ####\n");
-        printf("msg-type = %d \t msg-method = %s\n", msg->type, msg->method);
+        
         // if(msg->type == REQUEST && !strcmp(msg->method,"ACK"))
         if(msg->type == ANSWER)
         {
@@ -756,7 +699,7 @@ void handle_sip_msg(sip_session_t *session, char *str)
     }
     
     free_sip_msg(msg);
-    printf("*****Closing handle_sip_msg() function ******\n");
+    // printf("*****Closing handle_sip_msg() function ******\n");
 
 }
 

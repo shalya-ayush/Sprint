@@ -1,57 +1,3 @@
-/*****************************************************************************
- *                                                                           *
- *                      10101000100010001010101100101010101                  *
- *                      0101010101               0101010100                  *
- *                      0101010101               0101010100                  *
- *                      1010101010        10101  0101110101                  *
- *                      1010101010       01  10  0101011101                  *
- *                      1010111010       01      0101010101                  *
- *                       010101010  01  010 0101 010101010                   *
- *                       010101010  01  010  01  010101011                   *
- *                        01010101  01  010  01  01010101                    *
- *                        11010101  01  010  01  01010110                    *
- *                         1010101  01  010  01  0101000                     *
- *                         1110101  01  010  01  0101001                     *
- *                          110101      010      010001                      *
- *                           10101     001       01011                       *
- *                            1101  10101        0101                        *
- *                             110               011                         *
- *                              10               01                          *
- *                               01             10                           *
- *                                 00         10                             *
- *                                  01       01                              *
- *                                    01   01                                *
- *                                      010                                  *
- *                                       1                                   *
- *                                                                           *
- *                        Universidade Técnica de Lisboa                     *
- *                                                                           *
- *                          Instituto Superior Técnico                       *
- *                                                                           *
- *                                                                           *
- *                                                                           *
- *                    RIC - Redes Integradas de Comunicações                 *
- *                               VoIP Application                            *
- *                                                                           *
- *                       Professor Paulo Rogério Pereira                     *
- *                                                                           *
- *                                                                           *
- *****************************************************************************
- * @filename: rtp.c                                                          *
- * @description:                                                             *
- * @language: C                                                              *
- * @compiled on: cc/gcc                                                      *
- * @last update at: 2007-11-27                                               *
- *****************************************************************************
- * @students that colaborated on this file:                                  *
- *  57442 - Daniel Silvestre - daniel.silvestre@tagus.ist.utl.pt             *
- *  57476 - Hugo Miguel Pinho Freire - hugo.freire@tagus.ist.utl.pt          *
- *****************************************************************************
- * @changelog for this file:                                                 *
- *	No changelog was kept for this file.                  				           *
- *****************************************************************************
- * @comments for this file:                                                  *
- *****************************************************************************/
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -141,6 +87,10 @@ int rtp_sendto(sip_session_t *session, char *buf, int bufsize, struct sockaddr_i
 
     if((n = sendto(session->call->socket, tmpbuf, bufsize+RTP_HEADER_LEN, 0, (struct sockaddr *) addr, sizeof(struct sockaddr_in))) != bufsize+RTP_HEADER_LEN)
         die_with_error("sendto() failed");
+
+    // n = sendto(session->call->socket, tmpbuf, bufsize+RTP_HEADER_LEN, 0, (struct sockaddr *) addr, sizeof(struct sockaddr_in));
+    // if(n < 0)
+    //     die_with_error("sendto() failed");
 
     return n-RTP_HEADER_LEN;
 
