@@ -1,57 +1,3 @@
-/*****************************************************************************
- *                                                                           *
- *                      10101000100010001010101100101010101                  *
- *                      0101010101               0101010100                  *
- *                      0101010101               0101010100                  *
- *                      1010101010        10101  0101110101                  *
- *                      1010101010       01  10  0101011101                  *
- *                      1010111010       01      0101010101                  *
- *                       010101010  01  010 0101 010101010                   *
- *                       010101010  01  010  01  010101011                   *
- *                        01010101  01  010  01  01010101                    *
- *                        11010101  01  010  01  01010110                    *
- *                         1010101  01  010  01  0101000                     *
- *                         1110101  01  010  01  0101001                     *
- *                          110101      010      010001                      *
- *                           10101     001       01011                       *
- *                            1101  10101        0101                        *
- *                             110               011                         *
- *                              10               01                          *
- *                               01             10                           *
- *                                 00         10                             *
- *                                  01       01                              *
- *                                    01   01                                *
- *                                      010                                  *
- *                                       1                                   *
- *                                                                           *
- *                        Universidade Técnica de Lisboa                     *
- *                                                                           *
- *                          Instituto Superior Técnico                       *
- *                                                                           *
- *                                                                           *
- *                                                                           *
- *                    RIC - Redes Integradas de Comunicações                 *
- *                               VOIP Application                            *
- *                                                                           *
- *                       Professor Paulo Rogério Pereira                     *
- *                                                                           *
- *                                                                           *
- *****************************************************************************
- * @filename: audio.c                                                        *
- * @description:                                                             *
- * @language: C                                                              *
- * @compiled on: cc/gcc                                                      *
- * @last update at: 2007-11-27                                               *
- *****************************************************************************
- * @students that colaborated on this file:                                  *
- *  57442 - Daniel Silvestre - daniel.silvestre@tagus.ist.utl.pt             *
- *  57476 - Hugo Miguel Pinho Freire - hugo.freire@tagus.ist.utl.pt          *
- *****************************************************************************
- * @changelog for this file:                                                 *
- *	No changelog was kept for this file.                  									 *
- *****************************************************************************
- * @comments for this file:                                                  *
- *****************************************************************************/
 
 #include <sys/types.h>
 #include <sys/socket.h>
@@ -71,12 +17,7 @@
 
 int audiofd;
 
-/*****************************************************************************
- * @name
- * @description
- * @param
- * @return
- */
+
 int open_audio()
 {
     struct  stat st;
@@ -90,7 +31,7 @@ int open_audio()
     int fd, sz;
     char *c = (char *)calloc(100, sizeof(char));
 
-    fd = open(FILENAME, O_RDONLY);
+    fd = open(FILENAME, O_RDWR);
     if (fd < 0)
     {
         perror("r1");
@@ -98,12 +39,12 @@ int open_audio()
     }
 
     sz = read(fd, c, 100);
-    printf("called read(%d, c, 100). returned that"
-           " %d bytes were read.\n",
-           fd, sz);
+    // printf("called read(%d, c, 100). returned that"
+    //        " %d bytes were read.\n",
+    //        fd, sz);
     c[sz] = '\0';
-    printf("Those bytes are as follows: %s\n", c);
-    close(fd);
+    // printf("Those bytes are as follows: %s\n", c);
+    // close(fd);
     return fd;
 }
 // }int arg, err, fd=-1;
@@ -147,12 +88,7 @@ int open_audio()
 //     return fd;
 // }
 
-/*****************************************************************************
- * @name
- * @description
- * @param
- * @return
- */
+
 void close_audio(int fd)
 {
     close(fd);
