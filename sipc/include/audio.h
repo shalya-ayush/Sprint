@@ -1,7 +1,7 @@
 #ifndef __AUDIO_H__
 #define __AUDIO_H__
 
-#define FILENAME "/mnt/c/Users/shkarn/sprintCG/Build Project/abc.txt"
+#define FILENAME "/home/ayush/abc.txt"
 #define BUFSIZE 160
 #define FILEMODE O_RDWR
 
