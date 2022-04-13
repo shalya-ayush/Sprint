@@ -1,11 +1,20 @@
 #ifndef __SIP_H__
 #define __SIP_H__
 
+/*******************************************************************************
+*                       MACROS
+*******************************************************************************/
+
 #define DEFAULT_PORT 5060
 #define MAX_SIP_LEN 1300
 #define MAX_SIP_LINES 32
 #define DEFAULT_EXPIRATION 400
-/* SIP STATES */
+#define MAX_SDP_LEN 200
+
+/*******************************************************************************
+*                       SIP STATES
+*******************************************************************************/
+
 #define INIT 0
 #define REGISTERING 1
 #define REGISTERED 2
@@ -17,16 +26,22 @@
 #define UNREGISTERED 8
 #define BYE_OK 9
 
-/* SIP MESSAGES */
+/*******************************************************************************
+*                       SIP MESSAGEES
+*******************************************************************************/
+
 #define REGISTER 0
 #define INVITE 1
 #define INVITE_OK 2
 #define ACK 3
 
+/*******************************************************************************
+*                       MESSAGE TYPE
+*******************************************************************************/
 
 #define REQUEST 0
 #define ANSWER 1
-#define MAX_SDP_LEN 200
+
 
 #define TRUE 1
 #define FALSE 0
@@ -36,6 +51,7 @@ typedef struct rtp_session_t {
   int nseqpkt;
   int nseqnon;
 } rtp_session_t;
+
 
 typedef struct sip_call_t {
   char *dip;
@@ -79,6 +95,10 @@ typedef struct sip_msg_t {
 	sip_call_t *call;
 } sip_msg_t;
 
+
+/*******************************************************************************
+*                       FUCNTION PROTOTYPES
+*******************************************************************************/
 extern void init_sip_session(sip_session_t *session);
 extern void send_sip_invite(sip_session_t *session);
 extern void handle_sip_msg(sip_session_t *session, char *str);

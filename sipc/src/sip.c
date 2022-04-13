@@ -1,29 +1,41 @@
+/**************************FILE HEADER********************************************* 
+*    FILENAME       : sip.c  
+*
+*    DESCRIPTION    :  All the functions related to sip protocol are included here  
+*                                  
+*                    
+*     Revision History    :
+*     DATE             NAME              REFERENCE                      REASON
+*     -------------------------------------------------------------------------
+*     09 April  2022    Group-6        SIP Protocol Implementation      New code 
+*    
+*     Copyright © 2022 
+*
+**********************************************************************************/
 
-#include <stdio.h>
-#include <stdlib.h>
-#include <errno.h>
-#include <unistd.h>
-#include <fcntl.h>
-#include <sys/types.h>
-#include <sys/stat.h>
-#include <sys/socket.h>
-#include <string.h>
-#include <netinet/in.h>
-#include <arpa/inet.h>
-#include <time.h>
-#include <sys/ioctl.h>
-#include <sys/soundcard.h>
-#include "../include/sip.h"
+#include <header.h>
+#include <sip.h>
 
 int open_udp_socket(char *ip, int port);
 void die_with_error(const char *message);
-extern int audiofd;
+extern int textfd;
+
+/************************************************************************************
+*
+*    FUNCTION NAME    :     mk_sip_msg(sip_session_t * session, int exp, int msgtype)
+*
+*    DESCRIPTION      :    It is used to make different SIP messages according to the SIP format
+*
+*    RETURN           :     char * to the created message
+*
+**************************************************************************************/
 
 
 char *mk_sip_msg(sip_session_t *session, int exp, int msgtype)
 {
-    // printf("******Opening mk_sip_msg() function*******\n");
-    char *msg, sdp[MAX_SDP_LEN];
+    
+    char *msg = NULL;
+    char sdp[MAX_SDP_LEN];
 
     msg = (char *) malloc(MAX_SIP_LEN * sizeof(char));
 
@@ -54,7 +66,7 @@ char *mk_sip_msg(sip_session_t *session, int exp, int msgtype)
     case INVITE:
         snprintf(sdp, sizeof(sdp), \
                  "c=IN IP4 %s\n"\
-                 "m=audio %d RTP/AVP 0\n", session->localip, session->call->sport);
+                 "m=text %d RTP/AVP 0\n", session->localip, session->call->sport);
 
         snprintf(msg, MAX_SIP_LEN, \
                  "INVITE sip:%s@%s:%i SIP/2.0\n"\
@@ -81,7 +93,7 @@ char *mk_sip_msg(sip_session_t *session, int exp, int msgtype)
     case INVITE_OK:
         snprintf(sdp, MAX_SDP_LEN, \
                  "c=IN IP4 %s\n"\
-                 "m=audio %d RTP/AVP 0\n", session->localip, session->call->sport);
+                 "m=text %d RTP/AVP 0\n", session->localip, session->call->sport);
 
         snprintf(msg, MAX_SIP_LEN, \
                  "SIP/2.0 200 OK\n"\
@@ -157,26 +169,45 @@ char *mk_sip_msg(sip_session_t *session, int exp, int msgtype)
         break;
     }
 
-    // printf("*****Closing mk_sip_msg() function******\n");
+    
     return msg;
 }
 
+
+/************************************************************************************
+*
+*    FUNCTION NAME    :    read_sip_msg(char * str) 
+*
+*    DESCRIPTION      :    This function is used for reading the SIP messages and assigning value to 
+                            all the fields of sip_msg_t
+*
+*    RETURN           :     sip_msg_t * 
+*
+**************************************************************************************/
+
 sip_msg_t *read_sip_msg(char *str)
 {
-    char **s, *t, *r, n[3][100];
-    int i, k, p= 0;
-    sip_msg_t *msg;
+    char **s = NULL;
+    char *temp_str = NULL;
+    char *r = NULL;
+    char n[3][100];
+
+    int i = INIT;
+    int k = INIT;
+    int p=  INIT;
+
+    sip_msg_t *msg = NULL;
 
     s = (char **) malloc(MAX_SIP_LINES * sizeof(char*));
-    t = str;
+    temp_str = str;
 
-    for(i=0; (r = strchr(t, '\n')) != NULL;i++)
+    for(i=0; (r = strchr(temp_str, '\n')) != NULL;i++)
     {
         *r = '\0';
-        s[i] = (char *) malloc((strlen(t)+1) * sizeof(char));
-        strcpy(s[i], t);
+        s[i] = (char *) malloc((strlen(temp_str)+1) * sizeof(char));
+        strcpy(s[i], temp_str);
         *r = '\n';
-        t = r+1;
+        temp_str = r+1;
     }
 
     s[i]=NULL;
@@ -218,21 +249,21 @@ sip_msg_t *read_sip_msg(char *str)
     for(k=0;k<i;k++)
     {
 
-        t = strchr(s[k],':');
-        if(t != NULL)
+        temp_str = strchr(s[k],':');
+        if(temp_str != NULL)
         {
-            *t = '\0';
+            *temp_str = '\0';
 
             if(!strcmp(s[k],"Via"))
             {
-                msg->via = (char *) malloc(strlen(t+2)*sizeof(char));
-                memcpy(msg->via,t+2,strlen(t+2));
+                msg->via = (char *) malloc(strlen(temp_str+2)*sizeof(char));
+                memcpy(msg->via,temp_str+2,strlen(temp_str+2));
             }
             else if(!strcmp(s[k],"To"))
             {
-                msg->to = (char *) malloc(strlen(t+2)*sizeof(char));
-                memcpy(msg->to,t+2,strlen(t+2));
-                r = strchr(t+2,'=');
+                msg->to = (char *) malloc(strlen(temp_str+2)*sizeof(char));
+                memcpy(msg->to,temp_str+2,strlen(temp_str+2));
+                r = strchr(temp_str+2,'=');
                 if(r != NULL)
                 {
                     r++;
@@ -243,70 +274,70 @@ sip_msg_t *read_sip_msg(char *str)
             }
             else if(!strcmp(s[k],"From"))
             {
-                msg->from = (char *) malloc(strlen(t+2)*sizeof(char));
-                memcpy(msg->from,t+2,strlen(t+2));
+                msg->from = (char *) malloc(strlen(temp_str+2)*sizeof(char));
+                memcpy(msg->from,temp_str+2,strlen(temp_str+2));
 
-                if((r = strchr(t+2,' ')) != NULL)
+                if((r = strchr(temp_str+2,' ')) != NULL)
                 {
                     *r = '\0';
-                    msg->call->duser = (char *) malloc((strlen(t+2)+1)*sizeof(char));
-                    memset(msg->call->duser,'\0',strlen(t+2)+1);
-                    memcpy(msg->call->duser,t+2,strlen(t+2)+1);
+                    msg->call->duser = (char *) malloc((strlen(temp_str+2)+1)*sizeof(char));
+                    memset(msg->call->duser,'\0',strlen(temp_str+2)+1);
+                    memcpy(msg->call->duser,temp_str+2,strlen(temp_str+2)+1);
                 }
-                else if((r = strchr(t+2,'"')) != NULL)
+                else if((r = strchr(temp_str+2,'"')) != NULL)
                 {
 
                     *r = '\0';
-                    r = strchr(t+3,'"');
+                    r = strchr(temp_str+3,'"');
                     *r = '\0';
-                    msg->call->duser = (char *) malloc((strlen(t+3)+1)*sizeof(char));
-                    memset(msg->call->duser,'\0',strlen(t+3)+1);
-                    memcpy(msg->call->duser,t+3,strlen(t+3)+1);
+                    msg->call->duser = (char *) malloc((strlen(temp_str+3)+1)*sizeof(char));
+                    memset(msg->call->duser,'\0',strlen(temp_str+3)+1);
+                    memcpy(msg->call->duser,temp_str+3,strlen(temp_str+3)+1);
 
                 }
             }
             else if(!strcmp(s[k],"Call-ID"))
             {
-                msg->callid = (char *) malloc((strlen(t+2)+1)*sizeof(char));
-                memset(msg->callid,'\0',strlen(t+2)+1);
-                memcpy(msg->callid,t+2,strlen(t+2)+1);
+                msg->callid = (char *) malloc((strlen(temp_str+2)+1)*sizeof(char));
+                memset(msg->callid,'\0',strlen(temp_str+2)+1);
+                memcpy(msg->callid,temp_str+2,strlen(temp_str+2)+1);
 
-                msg->call->id = (char *) malloc((strlen(t+2)+1)*sizeof(char));
-                memset(msg->call->id,'\0',strlen(t+2)+1);
-                memcpy(msg->call->id,t+2,strlen(t+2)+1);
+                msg->call->id = (char *) malloc((strlen(temp_str+2)+1)*sizeof(char));
+                memset(msg->call->id,'\0',strlen(temp_str+2)+1);
+                memcpy(msg->call->id,temp_str+2,strlen(temp_str+2)+1);
             }
             else if(!strcmp(s[k],"CSeq"))
             {
-                msg->cseq = atoi(t+2);
+                msg->cseq = atoi(temp_str+2);
             }
             else if(!strcmp(s[k],"Contact"))
             {
-                msg->contact = (char *) malloc((strlen(t+2)+1)*sizeof(char));
-                memset(msg->contact,'\0',strlen(t+2)+1);
-                memcpy(msg->contact,t+2,strlen(t+2)+1);
-                r = strchr(t+2,':');
+                msg->contact = (char *) malloc((strlen(temp_str+2)+1)*sizeof(char));
+                memset(msg->contact,'\0',strlen(temp_str+2)+1);
+                memcpy(msg->contact,temp_str+2,strlen(temp_str+2)+1);
+                r = strchr(temp_str+2,':');
                 r++;
-                t =strchr(r,'@');
-                *t = '\0';
+                temp_str =strchr(r,'@');
+                *temp_str = '\0';
                 msg->call->dext = (char *) malloc((strlen(r)+1)*sizeof(char));
                 memset(msg->call->dext,'\0',strlen(r)+1);
                 memcpy(msg->call->dext,r,strlen(r)+1);
-                t++;
-                r = strchr(t,':');
+                temp_str++;
+                r = strchr(temp_str,':');
                 if(r == NULL)
                 {
                     msg->call->dsport = DEFAULT_PORT;
-                    r = strchr(t,'>');
+                    r = strchr(temp_str,'>');
                 }
                 *r = '\0';
-                msg->call->dip = (char *) malloc((strlen(t)+1)*sizeof(char));
+                msg->call->dip = (char *) malloc((strlen(temp_str)+1)*sizeof(char));
                 memset(msg->call->dip,'\0',strlen(r)+1);
-                memcpy(msg->call->dip,t,strlen(t)+1);
+                memcpy(msg->call->dip,temp_str,strlen(temp_str)+1);
                 if(msg->call->dsport != DEFAULT_PORT)
                 {
                     r++;
-                    t = strchr(r,'>');
-                    *t = '\0';
+                    temp_str = strchr(r,'>');
+                    *temp_str = '\0';
                     msg->call->dsport = atoi(r);
                 }
 
@@ -314,9 +345,9 @@ sip_msg_t *read_sip_msg(char *str)
             else if(!strcmp(s[k],"Content-Type"))
             {
 
-                r = strchr(t+2,'/');
+                r = strchr(temp_str+2,'/');
                 *r = '\0';
-                if(!strcmp(t+2,"application"))
+                if(!strcmp(temp_str+2,"application"))
                 {
 
                     p = 1;
@@ -325,17 +356,17 @@ sip_msg_t *read_sip_msg(char *str)
             }
             else if(!strcmp(s[k],"Content-Length"))
             {
-                msg->contentlength = atoi(t+2);
+                msg->contentlength = atoi(temp_str+2);
 
             }
             else if(!strcmp(s[k],"Max-Forwards"))
             {
-                msg->maxforwards = (char *) malloc(strlen(t+2)*sizeof(char));
-                memcpy(msg->maxforwards,t+2,strlen(t+2));
+                msg->maxforwards = (char *) malloc(strlen(temp_str+2)*sizeof(char));
+                memcpy(msg->maxforwards,temp_str+2,strlen(temp_str+2));
             }
             else if(!strcmp(s[k],"Expires"))
             {
-                msg->expires = atoi(t+2);
+                msg->expires = atoi(temp_str+2);
             }
         }
 
@@ -348,21 +379,32 @@ sip_msg_t *read_sip_msg(char *str)
             // *r = '\0';
             printf("s[k]=\n%s\n",s[k]);
 
-            if(!strcmp(s[k],"m=audio"))
+            if(!strcmp(s[k],"m=text"))
             {
                 msg->call->dport = atoi(r+1);
             }
         }
     }
 
-    for(k=0;k<i+1;k++) free(s[k]);
-    // printf("%s message has been read successfuly...\n", str);
+    for(k=0;k<i+1;k++){
+        free(s[k]);
+    }
+    
     free(s);
 
     return msg;
 
 }
 
+/************************************************************************************
+*
+*    FUNCTION NAME    :     gen_call_id(sip_session_t * session)
+*
+*    DESCRIPTION      :    It is used to generate a random call id for session->call->id field
+*
+*    RETURN           :     char * to the generated call id
+*
+**************************************************************************************/
 char *gen_call_id(sip_session_t *session)
 {
     char *s;
@@ -372,33 +414,46 @@ char *gen_call_id(sip_session_t *session)
 
     return s;
 }
+
+/************************************************************************************
+*
+*    FUNCTION NAME    :     send_sip_register(sip_session_t *session, int exp)
+*
+*    DESCRIPTION      :    This function is used to send the REGISTER packet to the server
+*
+*    RETURN           :     Nothing
+*
+**************************************************************************************/
 void send_sip_register(sip_session_t *session, int exp)
 {
-    // printf("******Opening send_sip_register() function ******\n");
-    int n;
-    char *msg;
+    
+    int n = INIT;
+    char *msg = NULL;
 
     msg = mk_sip_msg(session, exp, REGISTER);
     
-    // read_sip_msg(msg);
     
-    
-
     if ((n = sendto(session->socket, msg, strlen(msg) + 1, 0, (struct sockaddr *) &(session->addr), sizeof(session->addr))) != strlen(msg) + 1)
         die_with_error("sendto() failed");
 
     free(msg);
 
-    // printf("*****Closing send_sip_register() function******\n");
 
 }
 
-
-
+/************************************************************************************
+*
+*    FUNCTION NAME    :     init_sip_session(sip_session_t * session)
+*
+*    DESCRIPTION      :    This function is used to Initialize a SIP session
+*
+*    RETURN           :    Nothing 
+*
+**************************************************************************************/
 void init_sip_session(sip_session_t *session)
 {
 
-    // printf("******Openining init_sip_session() function ******\n");
+    
     session->call = NULL;
     session->seq = 1;
     session->curr_state = REGISTERING;
@@ -407,20 +462,25 @@ void init_sip_session(sip_session_t *session)
     session->socket = open_udp_socket(session->localip, session->localport);
     send_sip_register(session, DEFAULT_EXPIRATION);
 
-    // printf("******Closing init_sip_session() function******\n");
 
 }
 
-
-
-
+/************************************************************************************
+*
+*    FUNCTION NAME    :     send_sip_invite(sip_session_t * session)
+*
+*    DESCRIPTION      :    This function is used to send the INVITE packet to the sever
+*
+*    RETURN           :     Nothing
+*
+**************************************************************************************/
 void send_sip_invite(sip_session_t *session)
 
 
 {
-    // printf("******Opening send_sip_invite funciton()******\n");
-    int l;
-    char *s;
+    
+    int len = INIT;
+    char *s = NULL;
     struct sockaddr_in addr;
 
     s = gen_call_id(session);
@@ -430,40 +490,52 @@ void send_sip_invite(sip_session_t *session)
 
     session->call->socket = open_udp_socket(session->localip,0);
 
-    l = sizeof(addr);
-    if(getsockname(session->call->socket,(struct sockaddr *) &addr,(socklen_t *) &l))
+    len = sizeof(addr);
+    if(getsockname(session->call->socket,(struct sockaddr *) &addr,(socklen_t *) &len)){
+
         die_with_error("getsockname() failed");
+    }
 
     session->call->sport = ntohs(addr.sin_port);
      
     s = mk_sip_msg(session,0,INVITE);
     
 
-    l =sendto(session->socket,s,strlen(s)+1,0,(struct sockaddr *) &(session->addr), sizeof(session->addr));
-    // printf("Return from sendto() = %d\n", l);
+    len =sendto(session->socket,s,strlen(s)+1,0,(struct sockaddr *) &(session->addr), sizeof(session->addr));
+    
 
-    if(l < 0)
+    if(len < 0){
         die_with_error("sendto() failed");
+    }
     
 
     
     session->prev_state = REGISTERED;
     session->curr_state = INVITING;
     
-    // printf("******Closing send_sip_invite()function******\n");
 
 }
 
-
+/************************************************************************************
+*
+*    FUNCTION NAME    :     send_sip_bye(sip_session_t * session)
+*
+*    DESCRIPTION      :    This function is used to send the BYE packet
+*
+*    RETURN           :     Nothing
+*
+**************************************************************************************/
 void send_sip_bye(sip_session_t *session)
 {
-    int n;
-    char *s;
+    int n = INIT;
+    char *msg = NULL;
 
-    s = mk_sip_msg(session,0,BYE);
+    msg = mk_sip_msg(session,0,BYE);
 
-    if((n =sendto(session->socket,s,strlen(s)+1,0,(struct sockaddr *) &(session->addr), sizeof(session->addr)) ) != strlen(s)+1)
+    if((n =sendto(session->socket,msg,strlen(msg)+1,0,(struct sockaddr *) &(session->addr), sizeof(session->addr)) ) != strlen(msg)+1)
+    {
         die_with_error("sendto() failed");
+    }
 
     close(session->call->socket);
 
@@ -471,6 +543,15 @@ void send_sip_bye(sip_session_t *session)
     session->curr_state = BYE;
 }
 
+/************************************************************************************
+*
+*    FUNCTION NAME    :     close_sip_session(sip_session_t * session)
+*
+*    DESCRIPTION      :    This function is used to close the SIP session
+*
+*    RETURN           :     Nothing
+*
+**************************************************************************************/
 void close_sip_session(sip_session_t *session)
 {
     send_sip_register(session, 0);
@@ -479,60 +560,127 @@ void close_sip_session(sip_session_t *session)
     session->curr_state = UNREGISTERING;
 }
 
+/************************************************************************************
+*
+*    FUNCTION NAME    :     free_sip_msg(sip_msg_t * msg)
+*
+*    DESCRIPTION      :    This fucntion is used to free the created SIP message
+*
+*    RETURN           :    Nothing 
+*
+**************************************************************************************/
 void free_sip_msg(sip_msg_t *msg)
 {
 
-    if(msg->method != NULL) free(msg->method);
-    if(msg->ip != NULL) free(msg->ip);
-    if(msg->maxforwards != NULL) free(msg->maxforwards);
-    if(msg->to != NULL) free(msg->to);
-    if(msg->from != NULL) free(msg->from);
-    if(msg->callid != NULL) free(msg->callid);
-    if(msg->contact != NULL) free(msg->contact);
-    if(msg->contenttype != NULL) free(msg->contenttype);
+    if(msg->method != NULL){
+        free(msg->method);
+    }
+    if(msg->ip != NULL) {
+        free(msg->ip);
+    }
+    if(msg->maxforwards != NULL) {
+        free(msg->maxforwards);
+    }
+    if(msg->to != NULL) {
+        free(msg->to);
+    }
+    if(msg->from != NULL) {
+        free(msg->from);
+    }
+    if(msg->callid != NULL) {
+        free(msg->callid);
+    }
+    if(msg->contact != NULL) {
+        free(msg->contact);
+    }
+    if(msg->contenttype != NULL) {
+        free(msg->contenttype);
+    }
 
     free(msg);
 
 }
 
+/************************************************************************************
+*
+*    FUNCTION NAME    :     free_sip_call(sip_call_t * call)
+*
+*    DESCRIPTION      :    This function is used to free the SIP session call
+*
+*    RETURN           :     Nothing
+*
+**************************************************************************************/
 void free_sip_call(sip_call_t *call)
 {
-    if(call->dext != NULL) free(call->dext);
-    if(call->dip != NULL) free(call->dip);
-    if(call->duser != NULL) free(call->duser);
-    if(call->tag != NULL) free(call->tag);
-    if(call->id != NULL) free(call->id);
+    if(call->dext != NULL) {
+        free(call->dext);
+    } 
+    if(call->dip != NULL) {
+        free(call->dip);
+    } 
+    if(call->duser != NULL) {
+        free(call->duser);
+    } 
+    if(call->tag != NULL) {
+        free(call->tag);
+    } 
+    if(call->id != NULL) {
+        free(call->id);
+    } 
 
     free(call);
 }
 
+/************************************************************************************
+*
+*    FUNCTION NAME    :     free_sip_session(sip_session_t * session)
+*
+*    DESCRIPTION      :    This function is used to free the memory assigned during the SIP session
+                           creation
+*
+*    RETURN           :     Nothing
+*
+**************************************************************************************/
 void free_sip_session(sip_session_t *session)
 {
 
-    if(session->pbxip != NULL) free(session->pbxip);
-    if(session->localip != NULL) free(session->localip);
-    if(session->user != NULL) free(session->user);
+    if(session->pbxip != NULL) {
+        free(session->pbxip);
+    } 
+    if(session->localip != NULL) {
+        free(session->localip);
+    } 
+    if(session->user != NULL) {
+        free(session->user);
+    } 
 
     free(session);
 }
 
+/************************************************************************************
+*
+*    FUNCTION NAME    :     handle_sip_msg(sip_session_t * session, char * str)
+*
+*    DESCRIPTION      :    This function is used to handle the sip message and to change the state of the 
+                           program after each packet transfer.
+*
+*    RETURN           :     Nothing
+*
+**************************************************************************************/
 void handle_sip_msg(sip_session_t *session, char *str)
 {
 
-    // printf("******Opening handle_sip_msg() function******\n");
     int l;
-    char *s;
-    sip_msg_t *msg;
+    char *s = NULL;
+    sip_msg_t *msg = NULL;
     printf("str = %s", str);
     struct sockaddr_in addr;
 
-    read_sip_msg(str);
+    
 
     msg = read_sip_msg(str);
-    sleep(2);
-    printf("msg-type = %d \t msg-method = %s\n", msg->type, msg->method);
-
-    printf("Session current state is %d\n",session->curr_state);
+    
+    
     switch(session->curr_state)
     {
     case REGISTERING:
@@ -547,7 +695,7 @@ void handle_sip_msg(sip_session_t *session, char *str)
         else if(msg->type == ANSWER && msg->code < 100 && msg->code > 200)
         {
             fprintf(stdout,"Register not executed.\n");
-            exit(1);
+            exit(EXIT_FAILURE);
         }
         free_sip_call(msg->call);
         break;
@@ -566,7 +714,7 @@ void handle_sip_msg(sip_session_t *session, char *str)
             session->call->addr.sin_port = htons(session->call->dport);
             session->call->rtp_session.nseqpkt = 0;
             session->call->rtp_session.firstpkt = TRUE;
-            //session->call->sport = ntohs(session->call->addr.sin_port);
+            
 
 
             session->call->socket = open_udp_socket(session->localip,session->call->sport);
@@ -578,8 +726,10 @@ void handle_sip_msg(sip_session_t *session, char *str)
 
             s = mk_sip_msg(session, DEFAULT_EXPIRATION, INVITE_OK);
 
-            if((l = sendto(session->socket,s,strlen(s)+1,0,(struct sockaddr *) &(session->addr), sizeof(session->addr))) != strlen(s)+1)
+            if((l = sendto(session->socket,s,strlen(s)+1,0,(struct sockaddr *) &(session->addr), sizeof(session->addr))) != strlen(s)+1){
                 die_with_error("sendto() failed");
+            }
+                
 
             session->prev_state = REGISTERED;
             session->curr_state = INVITED;
@@ -588,8 +738,6 @@ void handle_sip_msg(sip_session_t *session, char *str)
         break;
     case INVITING:
         printf("#### Case = INVITING ####\n");
-            printf("Inside sip.c | case INVITING |\n");
-            printf("msg-type = %s | msg-code = %d\n", msg->type, msg->code);
         if(msg->type == ANSWER && msg->code >= 200 && msg->code < 300)
         {
             printf("ACK\n");
@@ -624,14 +772,14 @@ void handle_sip_msg(sip_session_t *session, char *str)
             session->call->tag = (char *) malloc((strlen(msg->call->tag)+1)*sizeof(char));
             memset(session->call->tag,'\0',strlen(msg->call->tag)+1);
             memcpy(session->call->tag,msg->call->tag,strlen(msg->call->tag));
-            //session->call->addr.sin_family = AF_INET;
-            //session->call->addr.sin_addr.s_addr = inet_addr(session->call->dip);
-            //session->call->addr.sin_port = htons(session->call->dport);
+            
 
             s = mk_sip_msg(session, DEFAULT_EXPIRATION, ACK);
 
-            if((l = sendto(session->socket,s,strlen(s)+1,0,(struct sockaddr *) &(session->addr), sizeof(session->addr))) != strlen(s)+1)
+            if((l = sendto(session->socket,s,strlen(s)+1,0,(struct sockaddr *) &(session->addr), sizeof(session->addr))) != strlen(s)+1){
                 die_with_error("sendto() failed");
+            }
+                
 
             free_sip_call(msg->call);
             free_sip_call(session->call);
@@ -645,7 +793,6 @@ void handle_sip_msg(sip_session_t *session, char *str)
     case INVITED:
         printf("#### Case = INVITED ####\n");
         
-        // if(msg->type == REQUEST && !strcmp(msg->method,"ACK"))
         if(msg->type == ANSWER)
         {
 
@@ -654,6 +801,7 @@ void handle_sip_msg(sip_session_t *session, char *str)
         }
         free_sip_call(msg->call);
         break;
+
     case ONCALL:
         printf("#### Case = ONCALL ####\n");
         if(msg->type == REQUEST && !strcmp(msg->method,"BYE"))
@@ -662,8 +810,10 @@ void handle_sip_msg(sip_session_t *session, char *str)
 
             s = mk_sip_msg(session, DEFAULT_EXPIRATION, BYE_OK);
 
-            if((l = sendto(session->socket,s,strlen(s)+1,0,(struct sockaddr *) &(session->addr), sizeof(session->addr))) != strlen(s)+1)
+            if((l = sendto(session->socket,s,strlen(s)+1,0,(struct sockaddr *) &(session->addr), sizeof(session->addr))) != strlen(s)+1){
                 die_with_error("sendto() failed");
+            }
+                
 
             close(session->call->socket);
             free_sip_call(session->call);
@@ -674,6 +824,7 @@ void handle_sip_msg(sip_session_t *session, char *str)
             session->curr_state = REGISTERED;
         }
         break;
+
     case BYE:
         printf("#### Case = BYE ####\n");
         if(msg->type == ANSWER && msg->code >= 200 && msg->code < 300)
@@ -699,7 +850,7 @@ void handle_sip_msg(sip_session_t *session, char *str)
     }
     
     free_sip_msg(msg);
-    // printf("*****Closing handle_sip_msg() function ******\n");
+    
 
 }
 

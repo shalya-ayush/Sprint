@@ -1,81 +1,115 @@
+/**************************FILE HEADER********************************************* 
+*    FILENAME       :   main.c
+*
+*    DESCRIPTION    :    Call all the functions here
+*                                  
+*                    
+*     Revision History    :
+*     DATE             NAME              REFERENCE                       REASON
+*     -------------------------------------------------------------------------
+*     11 April  2022    Group-6       SIP Protocol Implementation        New code 
+*    
+*     Copyright © 2022 
+*
+**********************************************************************************/
 
-#include <stdio.h>
-#include <stdlib.h>
-#include <errno.h>
-#include <unistd.h>
-#include <fcntl.h>
-#include <sys/types.h>
-#include <sys/stat.h>
-#include <sys/socket.h>
-#include <string.h>
-#include <netinet/in.h>
-#include <arpa/inet.h>
-#include <time.h>
-#include <sys/ioctl.h>
-#include <sys/soundcard.h>
-#include "../include/audio.h"
-#include "../include/sip.h"
-#include "../include/rtp.h"
-#include "../include/g711.h"
+#include <header.h>
+#include <text.h>
+#include <sip.h>
+#include <rtp.h>
 
-extern int audiofd;
+extern int textfd;
 
 
+/************************************************************************************
+*
+*    FUNCTION NAME    :    usage() 
+*
+*    DESCRIPTION      :    If the command line arguments are not according to the 
+                           required then call this function
+*
+*    RETURN           :     exit the whole program 
+*
+**************************************************************************************/
 void usage()
 {
     fprintf(stderr, "Usage: voz user extension@pbx_ip[:port] local_ip[:port]\n");
-    exit(1);
+    exit(EXIT_FAILURE);
 }
 
-
+/************************************************************************************
+*
+*    FUNCTION NAME    :     die_with_error(const char * message)
+*
+*    DESCRIPTION      :    Exit the program after printing the message on the terminal.
+*
+*    RETURN           :     Exit the whole program
+*
+**************************************************************************************/
 void die_with_error(const char *message)
 {
     perror(message);
-    exit(1);
+    exit(EXIT_FAILURE);
 }
 
-
+/************************************************************************************
+*
+*    FUNCTION NAME    :     open_udp_socket(char * ip, int port)
+*
+*    DESCRIPTION      :    It is used to create a socket and bind that socket to a address
+*
+*    RETURN           :     returns the socket file descriptor(sockfd)
+*
+**************************************************************************************/
 int open_udp_socket(char *ip, int port)
 {
-    int s, i;
+    int sockfd, ret;
     struct sockaddr_in addr;
 
     addr.sin_family = AF_INET;
     addr.sin_addr.s_addr = inet_addr(ip);
     addr.sin_port = htons(port > 0 ? port : INADDR_ANY);
 
-    if ((s = socket(PF_INET, SOCK_DGRAM, 0)) < 0)
+    if ((sockfd = socket(PF_INET, SOCK_DGRAM, 0)) < 0){
         die_with_error("socket() failed");
+    }
+        
 
-    if ((i = bind(s, (struct sockaddr *)&addr, sizeof(addr))) < 0)
+    if ((ret = bind(sockfd, (struct sockaddr *)&addr, sizeof(addr))) < 0){
         die_with_error("bind() failed");
+    }
+        
 
-    return s;
+    return sockfd;
 }
 
 
-int get_power(char *buf)
+/************************************************************************************
+*
+*    FUNCTION NAME    :     main(int argc, char*argv[])
+*
+*    DESCRIPTION      :    Recieve the arguments from the user, parse them and initialize the sip session 
+                            and perform the required operations
+*
+*    RETURN           :     EXIT_SUCCESS on SUCCESS 
+*
+**************************************************************************************/
+int main(int argc, char *argv[])
 {
-    int a, i, p;
+    /* verify syntax */
+    if (argc != 4){
+        usage();
+    }
+        
+    char *r = NULL;
+    char *t = NULL;
+    char msg[MAX_SIP_LEN];
+    char choice;
+    char buf[BUFSIZE];
 
-    for (a = 0, i = 0, p = 0; i < BUFSIZE; i++)
-
-        a = a + (st_ulaw2linear16(buf[i]) * st_ulaw2linear16(buf[i]));
-
-    p = a / BUFSIZE;
-
-    return p;
-}
-
-
-int main(int argc, char **argv)
-{
-    struct timeval tv;
-    tv.tv_sec = 10;
-    tv.tv_usec = 0;
-
-    char *r, *t, msg[MAX_SIP_LEN], c, buf[BUFSIZE];
-    int n = 0, p;
+    int retVal = INIT;
+    int p = INIT;
+    int counter = 1;
 
     struct sockaddr_in from;
     socklen_t fromlen;
@@ -84,13 +118,11 @@ int main(int argc, char **argv)
     sip_session_t *session;
     session = (sip_session_t *)malloc(sizeof(struct sip_session_t));
 
-    fd_set mask;
+    fd_set ready_socket;
 
     session->pbxport = session->localport = -1;
 
-    /* verify syntax */
-    if (argc != 4 && argc != 5)
-        usage();
+    
 
     /* parse arguments */
     session->user = (char *)malloc((strlen(argv[1]) + 1) * sizeof(char));
@@ -128,12 +160,10 @@ int main(int argc, char **argv)
     if (argc == 5)
         session->power = atoi(argv[4]);
 
-    // printf("Step-1: Arguments has beeen parsed Successfully..\n\n");
+    
 
-    // printf("Step:2 Trying to read the text..\n\n");
-
-    /* open audio device */
-    audiofd = open_audio();
+    /* open text file */
+    textfd = open_file();
 
     session->addr.sin_family = AF_INET;
     session->addr.sin_addr.s_addr = inet_addr(session->pbxip);
@@ -141,12 +171,14 @@ int main(int argc, char **argv)
 
     init_sip_session(session);
 
+    
+
     while (1)
 
     {
-        n = 0;
+        retVal = 0;
 
-        // printf("Inside While Loop...\n");
+        
         printf("Session curr State is %d\t Session prev state is %d\n", session->curr_state, session->prev_state);
 
         if (session->prev_state != session->curr_state)
@@ -185,115 +217,100 @@ int main(int argc, char **argv)
                     free_sip_call(session->call);
                 }
                 free_sip_session(session);
-                close(audiofd);
+                close(textfd);
 
-                exit(0);
+                exit(EXIT_SUCCESS);
             }
         }
 
-        /*TODO */
-
-        FD_ZERO(&mask);
-        FD_SET(session->socket, &mask);
-        //////
-        FD_SET(fileno(stdin), &mask);
-        //////
-
-        // if (session->curr_state == ONCALL)
-        // {
-        //     printf("Trying to set the State inside ONCALL...\n");
-        //     FD_SET(session->call->socket, &mask);
-        //     FD_SET(audiofd, &mask);
-        // }
-
-        int retval = select(FD_SETSIZE, &mask, NULL, NULL, NULL);
         
-        if(retval < 1){
+
+        FD_ZERO(&ready_socket);
+        FD_SET(session->socket, &ready_socket);
+        
+        FD_SET(fileno(stdin), &ready_socket);
+       
+
+        if (session->curr_state == ONCALL)
+        {
+            printf("Trying to set the State inside ONCALL...\n");
+            FD_SET(session->call->socket, &ready_socket);
+            FD_SET(textfd, &ready_socket);
+        }
+
+        retVal = select(FD_SETSIZE, &ready_socket, NULL, NULL, NULL);
+        
+        if(retVal < 0){
             die_with_error("select() failed\n");
         }
 
         if (session->curr_state == ONCALL)
         {
-            printf("Trying to set the State inside ONCALL...\n");
-            FD_SET(session->call->socket, &mask);
-            FD_SET(audiofd, &mask);
             
-            if (FD_ISSET(session->call->socket, &mask))
+            if (FD_ISSET(session->call->socket, &ready_socket))
             {
                 
-                printf("Inside ONCALL State 1..\n\n");
-
-                printf("Sesson - power = %d\n", session->power);
-                printf("Buffer = %s\n", buf);
-                printf("getpower(buff) = %i\n", get_power(buf));
-
                 p = rtp_recvfrom(session->call->socket, buf, BUFSIZE);
 
-                if ((n = write(audiofd, buf, p)) < 0)
+                if ((retVal = write(textfd, buf, p)) < 0){
                     die_with_error("write() failed");
+                }
+                    
             }
 
-            if (FD_ISSET(audiofd, &mask))
+            if (FD_ISSET(textfd, &ready_socket))
             {
-                n = 0;
-                printf("Inside ONCALL state 2...\n");
-
-                printf("Sesson - power = %d\n", session->power);
-            printf("Buffer = %s\n", buf);
-            printf("getpower(buff) = %i\n", get_power(buf));
+                
                 session->call->rtp_session.nseqnon++;
 
-                if ((n = read(audiofd, buf, BUFSIZE)) < 0)
+                if ((retVal = read(textfd, buf, BUFSIZE)) < 0){
                     die_with_error("read() failed");
-
-                //     if ((n = write(audiofd, buf, BUFSIZE)) < 0)
-                //         die_with_error("write() failed");
-                printf("Buffer = %s\n", buf);
-
-                if (session->power < get_power(buf))
-                {
-
-                    printf("%i\n", get_power(buf));
-                    session->call->rtp_session.nseqpkt++;
-                    rtp_sendto(session, buf, n, &(session->call->addr));
                 }
-                else
+
+                if(counter == 1){
+
+                session->call->rtp_session.nseqpkt++;
+                rtp_sendto(session, buf, retVal, &(session->call->addr));
+                counter--;
+                }
+                    
+                if(counter == 0){
                     session->call->rtp_session.firstpkt = TRUE;
+                    
+                }
             }
         }
 
-        //FD_SET(session->socket, &mask);
+       
 
-        if (FD_ISSET(session->socket, &mask))
+        if (FD_ISSET(session->socket, &ready_socket))
         {
 
             memset(msg, 0, MAX_SIP_LEN);
-            // printf("Waiting for the response from the server:\n ");
 
-            if ((n = recvfrom(session->socket, msg, MAX_SIP_LEN, 0, (struct sockaddr *)&from, &fromlen)) < 0)
+            if ((retVal = recvfrom(session->socket, msg, MAX_SIP_LEN, 0, (struct sockaddr *)&from, &fromlen)) < 0){
                 die_with_error("recvfrom() failed");
-            // printf("Handling SIP message function..\n");
-            sleep(2);
+            }
+                
+            
             handle_sip_msg(session, msg);
-            sleep(2);
+            
         }
 
-        if (FD_ISSET(fileno(stdin), &mask))
+        if (FD_ISSET(fileno(stdin), &ready_socket))
         {
 
-            printf("Mask = %d inside fd_isset \n", mask);
-            printf("Enter your Choice: ");
-            // __fpurge(stdin);
-            c = getchar();
-            printf("Choice = %c\n", c);
+            
+            choice = getchar();
+            
 
-            switch (c)
+            switch (choice)
             {
             case 'L':
 
                 if (session->curr_state == REGISTERING)
                 {
-                    printf("...Inside Registering Case...\n");
+                    
                     fprintf(stdout, "\nExtension: ");
                     fscanf(stdin, "%s", t);
                     fprintf(stdout, "IP: ");
@@ -314,20 +331,22 @@ int main(int argc, char **argv)
                     session->call->rtp_session.nseqpkt = 0;
                     session->call->rtp_session.nseqnon = 0;
                     session->call->rtp_session.firstpkt = TRUE;
-                    printf("Send sip_invite called...\n");
-                    sleep(2);
+                    printf("Sending INVITE to the server...\n");
+                    
                     send_sip_invite(session);
-                    sleep(2);
-                    printf("After sip_invite function..\n");
+                    
+                    printf("INVITE sent successfully...\n");
                 }
 
                 break;
             case 'D':
-                if (session->curr_state == ONCALL)
+                if (session->curr_state == ONCALL){
                     send_sip_bye(session);
+                }
+                    
                 else if (session->curr_state == INVITING){
                     printf("I'm here and I sent a cancel\n");
-                    send_sip_bye(session);
+                    
                 }
                 break;
             case 'T':
@@ -343,5 +362,5 @@ int main(int argc, char **argv)
         }
     }
 
-    return 0;
+    return EXIT_SUCCESS;
 }

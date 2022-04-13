@@ -1,24 +1,35 @@
+/**************************FILE HEADER********************************************* 
+*    FILENAME       : rtp.c  
+*
+*    DESCRIPTION    :  It has function  to create rtp header and  
+                       to send and recieve data from the server
+*                                  
+*                    
+*     Revision History    :
+*     DATE             NAME              REFERENCE                      REASON
+*     -------------------------------------------------------------------------
+*     07 April  2022    Group-6        SIP Protocol Implementation      New code 
+*    
+*     Copyright © 2022 
+*
+**********************************************************************************/
 
-#include <stdio.h>
-#include <stdlib.h>
-#include <errno.h>
-#include <unistd.h>
-#include <fcntl.h>
-#include <sys/types.h>
-#include <sys/stat.h>
-#include <sys/socket.h>
-#include <string.h>
-#include <netinet/in.h>
-#include <arpa/inet.h>
-#include <time.h>
-#include <sys/ioctl.h>
-#include <sys/soundcard.h>
-#include "../include/rtp.h"
-#include "../include/sip.h"
+#include <header.h>
+#include <rtp.h>
+#include <sip.h>
 
 
 void die_with_error(const char *message);
 
+/************************************************************************************
+*
+*    FUNCTION NAME    :     mk_rtp_header(sip_session_t * seesion, int n)
+*
+*    DESCRIPTION      :    This function is used to make a rtp header
+*
+*    RETURN           :     char * pointer to the created rtp header
+*
+**************************************************************************************/
 char *mk_rtp_header(sip_session_t *session, int n)
 {
     char *rtp_header;
@@ -55,6 +66,15 @@ char *mk_rtp_header(sip_session_t *session, int n)
     return rtp_header;
 }
 
+/************************************************************************************
+*
+*    FUNCTION NAME    :     rtp_recvfrom(int s, char * buf, int bufsize)
+*
+*    DESCRIPTION      :    This function is used to receive input from the server
+*
+*    RETURN           :     
+*
+**************************************************************************************/
 int rtp_recvfrom(int s, char *buf, int bufsize)
 {
 
@@ -64,8 +84,10 @@ int rtp_recvfrom(int s, char *buf, int bufsize)
 
     fromlen = sizeof(from);
 
-    if((n = recvfrom(s, tmpbuf, bufsize+RTP_HEADER_LEN, 0, (struct sockaddr *) &from, (socklen_t *) &fromlen)) != bufsize+RTP_HEADER_LEN)
+    if((n = recvfrom(s, tmpbuf, bufsize+RTP_HEADER_LEN, 0, (struct sockaddr *) &from, (socklen_t *) &fromlen)) != bufsize+RTP_HEADER_LEN){
         die_with_error("recvfrom() failed");
+    }
+        
 
     memcpy(header, tmpbuf, RTP_HEADER_LEN);
     memcpy(buf, tmpbuf+RTP_HEADER_LEN, n - RTP_HEADER_LEN);
@@ -73,6 +95,17 @@ int rtp_recvfrom(int s, char *buf, int bufsize)
     return n-RTP_HEADER_LEN;
 }
 
+
+/************************************************************************************
+*
+*    FUNCTION NAME    :     rtp_sendto(sip_session_t * session, char * buf, int bufsize,
+                                     struct sockaddr_in * addr)
+*
+*    DESCRIPTION      :    It is used to send data to the server
+*
+*    RETURN           :     
+*
+**************************************************************************************/
 int rtp_sendto(sip_session_t *session, char *buf, int bufsize, struct sockaddr_in *addr)
 {
 
@@ -85,12 +118,15 @@ int rtp_sendto(sip_session_t *session, char *buf, int bufsize, struct sockaddr_i
     memcpy(tmpbuf, rtp_header, RTP_HEADER_LEN);
     memcpy(tmpbuf+RTP_HEADER_LEN, buf, bufsize);
 
-    if((n = sendto(session->call->socket, tmpbuf, bufsize+RTP_HEADER_LEN, 0, (struct sockaddr *) addr, sizeof(struct sockaddr_in))) != bufsize+RTP_HEADER_LEN)
+    if((n = sendto(session->call->socket, tmpbuf, bufsize+RTP_HEADER_LEN, 0, (struct sockaddr *) addr, sizeof(struct sockaddr_in))) != bufsize+RTP_HEADER_LEN){
         die_with_error("sendto() failed");
 
-    // n = sendto(session->call->socket, tmpbuf, bufsize+RTP_HEADER_LEN, 0, (struct sockaddr *) addr, sizeof(struct sockaddr_in));
-    // if(n < 0)
-    //     die_with_error("sendto() failed");
+    }
+
+
+        
+
+    
 
     return n-RTP_HEADER_LEN;
 
